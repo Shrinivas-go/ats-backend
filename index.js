@@ -18,8 +18,6 @@ const { calculateWeightedATSScore } = require('./ats/scoreWeighted.utils');
 const { generateATSFeedback } = require('./ats/feedback.utils');
 const { simulateATSImprovements } = require('./ats/simulator.utils');
 
-const fs = require("fs");
-
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
