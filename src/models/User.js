@@ -53,6 +53,26 @@ const userSchema = new mongoose.Schema({
     avatar: {
         type: String, // For Google profile picture
     },
+    // Credit system
+    credits: {
+        type: Number,
+        default: 3, // New users get 3 free credits
+        min: 0,
+    },
+    totalScans: {
+        type: Number,
+        default: 0,
+    },
+    // Profile customization
+    location: {
+        type: String,
+        trim: true,
+        maxlength: [100, 'Location cannot exceed 100 characters'],
+    },
+    selectedAvatar: {
+        type: String, // ID of predefined avatar or 'google' for Google profile pic
+        default: null,
+    },
 }, {
     timestamps: true,
 });

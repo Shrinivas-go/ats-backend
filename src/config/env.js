@@ -10,6 +10,8 @@ const config = {
 
     mongodb: {
         uri: process.env.MONGODB_URI,
+        retryAttempts: parseInt(process.env.MONGODB_RETRY_ATTEMPTS, 10) || 5,
+        retryDelay: parseInt(process.env.MONGODB_RETRY_DELAY, 10) || 1000, // Base delay in ms
     },
 
     jwt: {
@@ -20,7 +22,12 @@ const config = {
     },
 
     cors: {
-        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+        // Support multiple origins separated by comma
+        // Example: "http://localhost:5173,https://your-app.vercel.app"
+        frontendUrls: (process.env.FRONTEND_URL || 'http://localhost:5173')
+            .split(',')
+            .map(url => url.trim())
+            .filter(Boolean),
     },
 
     rateLimit: {

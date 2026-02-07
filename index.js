@@ -14,13 +14,23 @@ const path = require('path');
 // Import config
 const config = require('./src/config/env');
 
+// Import database connection utility
+const { connectDB, getConnectionState } = require('./src/config/database');
+
 // Import routes
 const authRoutes = require('./src/routes/auth.routes');
+const creditRoutes = require('./src/routes/credit.routes');
+const profileRoutes = require('./src/routes/profile.routes');
+const supportRoutes = require('./src/routes/support.routes');
+const jdRoutes = require('./src/routes/jd.routes');
+const assistantRoutes = require('./src/routes/assistant.routes');
 
 // Import utilities
 const { parseResumeText } = require('./ats/parser.utils');
 const { analyzeResume } = require('./ats/analyzer.utils');
 const { apiLimiter, uploadLimiter } = require('./src/middlewares/rateLimiter');
+const { optionalAuth } = require('./src/middlewares/auth');
+const { requireCreditsForScan, recordScanUsage } = require('./src/middlewares/creditGate');
 
 // Import ATS utility functions
 const { extractJDSkills } = require('./ats/jd.utils');
@@ -41,8 +51,20 @@ app.use(helmet({
 }));
 
 // =================== CORS CONFIGURATION ===================
+// Dynamic origin validation for multiple environments (dev + production)
 app.use(cors({
-  origin: config.cors.frontendUrl,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    // Check if origin is in allowed list
+    if (config.cors.frontendUrls.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -56,30 +78,18 @@ app.use(cookieParser());
 // =================== RATE LIMITING (Global) ===================
 app.use('/api', apiLimiter);
 
+// =================== HEALTH CHECK ENDPOINT ===================
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    database: getConnectionState(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // =================== MONGODB CONNECTION ===================
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(config.mongodb.uri || process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`❌ Error: ${error.message}`);
-    // Don't exit process in dev, just log
-    // process.exit(1); 
-  }
-};
-
-connectDB();
-
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB Disconnected');
-});
-
-mongoose.connection.on('reconnected', () => {
-  console.log('🔄 MongoDB Reconnected');
-});
+// Database connection is now handled by the centralized module
+// It will be initiated before starting the server
 
 // =================== FILE UPLOAD CONFIGURATION ===================
 const uploadDir = 'uploads';
@@ -113,6 +123,21 @@ const upload = multer({
 
 // Auth routes
 app.use('/auth', authRoutes);
+
+// Credit routes
+app.use('/credits', creditRoutes);
+
+// Profile routes
+app.use('/profile', profileRoutes);
+
+// Support routes
+app.use('/support', supportRoutes);
+
+// JD Generator routes
+app.use('/jd', jdRoutes);
+
+// AI Assistant routes
+app.use('/assistant', assistantRoutes);
 
 // Legacy registration route (for backward compatibility)
 app.post('/', async (req, res) => {
@@ -155,6 +180,13 @@ app.get('/', (req, res) => {
         logout: 'POST /auth/logout',
         me: 'GET /auth/me',
       },
+      credits: {
+        balance: 'GET /credits/balance',
+        history: 'GET /credits/history',
+        packages: 'GET /credits/packages',
+        scans: 'GET /credits/scans',
+        purchase: 'POST /credits/purchase',
+      },
       resume: {
         upload: 'POST /upload-resume',
         parse: 'POST /parse-resume',
@@ -163,7 +195,7 @@ app.get('/', (req, res) => {
         extractJDSkills: 'POST /extract-jd-skills',
         compareSkills: 'POST /compare-skills',
         score: 'POST /ats-score',
-        scoreWeighted: 'POST /ats-score-weighted',
+        scoreWeighted: 'POST /ats-score-weighted (credit gated)',
         simulator: 'POST /ats-simulator',
       }
     }
@@ -264,7 +296,8 @@ app.post('/ats-score', (req, res) => {
   }
 });
 
-app.post('/ats-score-weighted', (req, res) => {
+// Main ATS scoring endpoint with credit gating
+app.post('/ats-score-weighted', optionalAuth, requireCreditsForScan, async (req, res) => {
   try {
     const { resumeSkills, jobDescription } = req.body;
     if (!resumeSkills || !jobDescription) {
@@ -276,7 +309,31 @@ app.post('/ats-score-weighted', (req, res) => {
     const { atsScore, explanation } = calculateWeightedATSScore(comparison);
     const feedback = generateATSFeedback({ atsScore, ...comparison });
 
-    return res.json({ success: true, atsScore, explanation, feedback, coreSkills, optionalSkills, ...comparison });
+    // Record scan usage (async, don't wait)
+    const scanResult = {
+      overallScore: atsScore,
+      coreSkillsMatch: comparison.coreMatchPercentage,
+      optionalSkillsMatch: comparison.optionalMatchPercentage,
+    };
+    recordScanUsage(req, scanResult).catch(err => console.error('Scan recording error:', err));
+
+    // Include credit info in response for frontend
+    const creditInfo = req.creditInfo ? {
+      creditsRemaining: req.creditInfo.credits - (req.creditInfo.shouldCharge ? 1 : 0),
+      isFreeScan: req.creditInfo.isFreeScan || false,
+      isAdmin: req.creditInfo.isAdmin || false,
+    } : null;
+
+    return res.json({
+      success: true,
+      atsScore,
+      explanation,
+      feedback,
+      coreSkills,
+      optionalSkills,
+      ...comparison,
+      creditInfo,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Error calculating weighted ATS score', error: error.message });
   }
@@ -333,8 +390,30 @@ app.use((err, req, res, next) => {
 // =================== START SERVER ===================
 const PORT = config.port || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📁 Upload directory: ${path.resolve(uploadDir)}`);
-  console.log(`🔐 Auth routes: /auth/register, /auth/login, /auth/refresh, /auth/logout`);
-});
+// Connect to database before starting server
+// This ensures DB is ready before accepting any requests
+const startServer = async () => {
+  try {
+    // Attempt database connection with retry logic
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📁 Upload directory: ${path.resolve(uploadDir)}`);
+      console.log(`🔐 Auth routes: /auth/register, /auth/login, /auth/refresh, /auth/logout`);
+      console.log(`💚 Health check: GET /health`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    console.log('⚠️ Server will start anyway, but database operations will fail until connection is restored');
+
+    // Start server even if DB fails - allows health checks and non-DB routes
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT} (DB disconnected)`);
+      console.log(`📁 Upload directory: ${path.resolve(uploadDir)}`);
+      console.log(`💚 Health check: GET /health`);
+    });
+  }
+};
+
+startServer();

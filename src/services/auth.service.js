@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const tokenService = require('./token.service');
+const { isAdminEmail } = require('../middlewares/admin');
 
 /**
  * Auth Service - Handles authentication business logic
@@ -166,14 +167,20 @@ const authService = {
     },
 
     /**
-     * Get user by ID
+     * Get user by ID - includes admin status
      */
     async getUserById(userId) {
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('User not found');
         }
-        return user;
+
+        // Add isAdmin flag based on email
+        const userData = user.toJSON();
+        userData.isAdmin = isAdminEmail(user.email);
+        userData.bypassPaywall = userData.isAdmin;
+
+        return userData;
     },
 };
 

@@ -1,0 +1,56 @@
+PROFESSIONAL RESUME
+
+JOHN DEVELOPER
+Senior Software Engineer
+john.developer@email.com | (555) 123-4567 | San Francisco, CA
+LinkedIn: linkedin.com/in/johndeveloper | GitHub: github.com/johndeveloper
+
+SUMMARY
+Experienced software engineer with 5+ years of expertise in full-stack development. Proficient in JavaScript, React, Node.js, and cloud technologies. Strong background in building scalable web applications and leading engineering teams.
+
+SKILLS
+Technical Skills:
+- Programming Languages: JavaScript, TypeScript, Python, Java
+- Frontend: React, Vue.js, HTML5, CSS3, Tailwind CSS
+- Backend: Node.js, Express, Django, REST APIs, GraphQL
+- Databases: MongoDB, PostgreSQL, MySQL, Redis
+- Cloud: AWS (EC2, S3, Lambda), Docker, Kubernetes
+- Tools: Git, GitHub, JIRA, CI/CD, Jest, Webpack
+
+Soft Skills:
+- Team Leadership
+- Agile/Scrum Methodologies
+- Technical Documentation
+- Problem Solving
+
+EXPERIENCE
+
+Senior Software Engineer | TechCorp Inc.
+January 2021 - Present | San Francisco, CA
+- Led development of microservices architecture serving 1M+ daily users
+- Implemented React-based dashboard reducing load time by 40%
+- Mentored team of 5 junior developers
+- Established CI/CD pipelines using GitHub Actions
+
+Software Engineer | StartupXYZ
+June 2018 - December 2020 | Remote
+- Built full-stack features using Node.js and React
+- Designed and implemented PostgreSQL database schema
+- Integrated third-party APIs including Stripe and Twilio
+- Achieved 95% code coverage through comprehensive testing
+
+Junior Developer | WebAgency
+January 2017 - May 2018 | New York, NY
+- Developed responsive websites using HTML, CSS, JavaScript
+- Collaborated with design team to implement UI/UX improvements
+- Maintained WordPress sites for 20+ clients
+
+EDUCATION
+
+Bachelor of Science in Computer Science
+University of California, Berkeley
+Graduated: May 2016 | GPA: 3.7
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect
+- MongoDB Certified Developer

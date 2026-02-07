@@ -1,5 +1,19 @@
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const config = require('../config/env');
+
+/**
+ * IPv6-safe key generator
+ * Uses express-rate-limit's built-in helper to handle IPv6 properly
+ */
+const getKeyGenerator = () => {
+    // Check if ipKeyGenerator exists (newer versions)
+    if (typeof ipKeyGenerator === 'function') {
+        return ipKeyGenerator;
+    }
+    // Fallback for older versions - use default behavior
+    return undefined;
+};
 
 /**
  * Auth rate limiter - stricter limits for login/register
@@ -14,10 +28,8 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: false,
-    keyGenerator: (req) => {
-        // Use IP address as key
-        return req.ip || req.connection.remoteAddress;
-    },
+    keyGenerator: getKeyGenerator(),
+    validate: { xForwardedForHeader: false, trustProxy: false, default: false },
 });
 
 /**
@@ -32,6 +44,8 @@ const apiLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: getKeyGenerator(),
+    validate: { xForwardedForHeader: false, trustProxy: false, default: false },
 });
 
 /**
@@ -46,6 +60,8 @@ const uploadLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: getKeyGenerator(),
+    validate: { xForwardedForHeader: false, trustProxy: false, default: false },
 });
 
 module.exports = {
@@ -53,3 +69,4 @@ module.exports = {
     apiLimiter,
     uploadLimiter,
 };
+

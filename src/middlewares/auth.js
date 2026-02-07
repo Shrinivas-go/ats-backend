@@ -1,8 +1,21 @@
 const tokenService = require('../services/token.service');
 const User = require('../models/User');
+const { isAdminEmail } = require('./admin');
 
 /**
- * Authentication middleware - verifies JWT access token
+ * Authentication Middleware - Production-grade token verification
+ * 
+ * Features:
+ * - Consistent 401 responses (never 500 for auth failures)
+ * - Specific error messages for debugging
+ * - DB-backed user validation
+ * - Supports both cookie and header-based tokens
+ * - Admin bypass detection
+ */
+
+/**
+ * Primary authentication middleware - verifies JWT access token
+ * Returns 401 for all auth failures with specific error codes
  */
 const auth = async (req, res, next) => {
     try {
@@ -20,40 +33,78 @@ const auth = async (req, res, next) => {
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. No token provided.',
+                code: 'NO_TOKEN',
             });
         }
 
-        // Verify token
-        const decoded = tokenService.verifyAccessToken(token);
-
-        // Get user
-        const user = await User.findById(decoded.userId);
-        if (!user || !user.isActive) {
+        // Verify token - will throw specific errors for different failure modes
+        let decoded;
+        try {
+            decoded = tokenService.verifyAccessToken(token);
+        } catch (tokenError) {
+            // Handle token-specific errors with appropriate codes
+            if (tokenError.code === 'TOKEN_EXPIRED') {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Access token has expired. Please refresh your session.',
+                    code: 'TOKEN_EXPIRED',
+                });
+            }
             return res.status(401).json({
                 success: false,
-                message: 'User not found or deactivated.',
+                message: tokenError.message || 'Invalid token.',
+                code: tokenError.code || 'TOKEN_INVALID',
             });
         }
 
-        // Attach user to request
+        // Validate user exists in database and is active
+        // This prevents tokens from working for deleted/deactivated users
+        const user = await User.findById(decoded.userId);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User account not found.',
+                code: 'USER_NOT_FOUND',
+            });
+        }
+
+        if (!user.isActive) {
+            return res.status(401).json({
+                success: false,
+                message: 'User account has been deactivated.',
+                code: 'USER_DEACTIVATED',
+            });
+        }
+
+        // Check if user is admin based on email
+        const isAdmin = isAdminEmail(user.email);
+
+        // Attach user info to request for downstream handlers
         req.user = {
             id: user._id,
             email: user.email,
             role: user.role,
+            isAdmin,
+            bypassPaywall: isAdmin, // Admins bypass all paywalls
         };
 
         next();
     } catch (error) {
+        // Catch-all for unexpected errors - still return 401 for security
+        console.error('Auth middleware error:', error);
         return res.status(401).json({
             success: false,
-            message: 'Invalid or expired token.',
+            message: 'Authentication failed.',
+            code: 'AUTH_ERROR',
         });
     }
 };
 
 /**
  * Role authorization middleware
- * @param  {...string} roles - Allowed roles
+ * Must be used after auth middleware
+ * @param {...string} roles - Allowed roles
  */
 const authorize = (...roles) => {
     return (req, res, next) => {
@@ -61,6 +112,7 @@ const authorize = (...roles) => {
             return res.status(401).json({
                 success: false,
                 message: 'Authentication required.',
+                code: 'NO_AUTH',
             });
         }
 
@@ -68,6 +120,7 @@ const authorize = (...roles) => {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. Insufficient permissions.',
+                code: 'FORBIDDEN',
             });
         }
 
@@ -77,6 +130,7 @@ const authorize = (...roles) => {
 
 /**
  * Optional auth - attaches user if token present, but doesn't require it
+ * Useful for routes that show different content based on auth status
  */
 const optionalAuth = async (req, res, next) => {
     try {
@@ -90,20 +144,29 @@ const optionalAuth = async (req, res, next) => {
         }
 
         if (token) {
-            const decoded = tokenService.verifyAccessToken(token);
-            const user = await User.findById(decoded.userId);
-            if (user && user.isActive) {
-                req.user = {
-                    id: user._id,
-                    email: user.email,
-                    role: user.role,
-                };
+            try {
+                const decoded = tokenService.verifyAccessToken(token);
+                const user = await User.findById(decoded.userId);
+
+                if (user && user.isActive) {
+                    const isAdmin = isAdminEmail(user.email);
+                    req.user = {
+                        id: user._id,
+                        email: user.email,
+                        role: user.role,
+                        isAdmin,
+                        bypassPaywall: isAdmin,
+                    };
+                }
+            } catch {
+                // Token invalid, but that's okay for optional auth
+                // Just proceed without user
             }
         }
 
         next();
     } catch (error) {
-        // Token invalid, but that's okay for optional auth
+        // Don't fail request for optional auth errors
         next();
     }
 };

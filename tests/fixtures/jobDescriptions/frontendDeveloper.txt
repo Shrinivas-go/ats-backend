@@ -1,0 +1,32 @@
+JOB DESCRIPTION: Frontend Developer
+
+COMPANY: WebStartup
+LOCATION: Remote
+TYPE: Full-time
+
+ABOUT THE ROLE
+We're seeking a talented Frontend Developer to create beautiful, responsive user interfaces for our SaaS platform.
+
+REQUIRED SKILLS (Core)
+- JavaScript and TypeScript proficiency
+- React framework experience
+- HTML5 and CSS3 expertise
+- Responsive design implementation
+- State management (Redux or Context API)
+- REST API integration
+- Git version control
+
+PREFERRED SKILLS (Optional)
+- Tailwind CSS experience
+- Next.js framework
+- Unit testing with Jest
+- GraphQL knowledge
+- Figma or design tools experience
+- Performance optimization
+
+RESPONSIBILITIES
+- Build responsive web interfaces
+- Implement pixel-perfect designs
+- Optimize frontend performance
+- Write unit tests for components
+- Collaborate with backend team

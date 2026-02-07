@@ -4,6 +4,7 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const validate = require('../middlewares/validate');
 const { auth } = require('../middlewares/auth');
+const { dbReady } = require('../middlewares/dbReady');
 const { authLimiter } = require('../middlewares/rateLimiter');
 const { registerSchema, loginSchema } = require('../validators/auth.validator');
 
@@ -14,6 +15,7 @@ const { registerSchema, loginSchema } = require('../validators/auth.validator');
  */
 router.post(
     '/register',
+    dbReady,
     authLimiter,
     validate(registerSchema),
     authController.register
@@ -26,6 +28,7 @@ router.post(
  */
 router.post(
     '/login',
+    dbReady,
     authLimiter,
     validate(loginSchema),
     authController.login
@@ -36,7 +39,7 @@ router.post(
  * @desc    Refresh access token
  * @access  Public (requires valid refresh token)
  */
-router.post('/refresh', authController.refresh);
+router.post('/refresh', dbReady, authController.refresh);
 
 /**
  * @route   POST /auth/logout
@@ -57,6 +60,6 @@ router.get('/me', auth, authController.me);
  * @desc    Google OAuth login/register
  * @access  Public
  */
-router.post('/google', authLimiter, authController.googleAuth);
+router.post('/google', dbReady, authLimiter, authController.googleAuth);
 
 module.exports = router;

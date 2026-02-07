@@ -1,0 +1,41 @@
+JOB DESCRIPTION: Senior Software Engineer
+
+COMPANY: TechCorp Inc.
+LOCATION: San Francisco, CA (Remote Optional)
+TYPE: Full-time
+
+ABOUT THE ROLE
+We are looking for a Senior Software Engineer to join our growing engineering team. You will be responsible for designing, developing, and maintaining scalable web applications that serve millions of users.
+
+REQUIRED SKILLS (Core)
+- 5+ years of experience in software development
+- Strong proficiency in JavaScript and TypeScript
+- Experience with React or Vue.js frontend frameworks
+- Backend development with Node.js and Express
+- Database experience with MongoDB or PostgreSQL
+- Experience with REST APIs and GraphQL
+- Git version control
+- AWS or cloud platform experience
+
+PREFERRED SKILLS (Optional)
+- Docker and Kubernetes experience
+- CI/CD pipeline setup and maintenance
+- Experience with microservices architecture
+- Redis caching experience
+- Python or Java experience
+- MongoDB certification
+- AWS certification
+
+RESPONSIBILITIES
+- Design and implement new features and systems
+- Collaborate with cross-functional teams
+- Mentor junior developers
+- Participate in code reviews
+- Contribute to technical documentation
+
+BENEFITS
+- Competitive salary
+- Health insurance
+- 401(k) matching
+- Remote work flexibility
+- Professional development budget
