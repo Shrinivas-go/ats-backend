@@ -57,11 +57,11 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
 
-    // Check if origin is in allowed list
-    if (config.cors.frontendUrls.includes(origin)) {
+    // Check if origin is in allowed list or if wildcard is enabled
+    if (config.cors.frontendUrls.includes('*') || config.cors.frontendUrls.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
+      console.warn(`🔒 CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -379,6 +379,15 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Global Error:', err);
+
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS verification failed',
+      error: 'Origin not allowed'
+    });
+  }
 
   if (err instanceof multer.MulterError) {
     return res.status(400).json({ success: false, message: 'File upload error', error: err.message });
