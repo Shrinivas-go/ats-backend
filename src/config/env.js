@@ -24,9 +24,9 @@ const config = {
     cors: {
         // Support multiple origins separated by comma
         // Example: "http://localhost:5173,https://your-app.vercel.app"
-        frontendUrls: (process.env.FRONTEND_URL || 'http://localhost:5173')
+        frontendUrls: (process.env.FRONTEND_URL || 'http://localhost:5173,https://ats-resume-checker-coral.vercel.app')
             .split(',')
-            .map(url => url.trim())
+            .map(url => url.trim().replace(/\/$/, '')) // Remove trailing slash
             .filter(Boolean),
     },
 
