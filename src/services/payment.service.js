@@ -8,13 +8,31 @@ const crypto = require('crypto');
  */
 
 // Initialize Razorpay
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+try {
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+        razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
+    } else {
+        console.warn('⚠️ Razorpay credentials missing. Payment features will be disabled.');
+    }
+} catch (error) {
+    console.error('Failed to initialize Razorpay:', error.message);
+}
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+let stripe;
+try {
+    if (process.env.STRIPE_SECRET_KEY) {
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    } else {
+        console.warn('⚠️ Stripe credentials missing. Payment features will be disabled.');
+    }
+} catch (error) {
+    console.error('Failed to initialize Stripe:', error.message);
+}
 
 /**
  * Create a Razorpay order
@@ -24,6 +42,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
  * @returns {Object} Razorpay order
  */
 async function createRazorpayOrder(amount, userId, packageId) {
+    if (!razorpay) {
+        throw new Error('Payment gateway not configured');
+    }
+
     const options = {
         amount: amount * 100, // Razorpay expects amount in paise
         currency: 'INR',
